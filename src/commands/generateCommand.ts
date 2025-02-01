@@ -2,76 +2,28 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import CryptoJS from 'crypto-js';
-import axios from 'axios';
 import fs from 'fs/promises';
-import { WalletData, PublicWalletData, APIWalletResponse } from '../types/wallet';
-import { dag4 } from '@stardust-collective/dag4';
-import { Wallet as XrpWallet } from 'xrpl';
-
-const API_BASE_URL = 'http://localhost:8081/api';
+import { WalletData, PublicWalletData } from '../types/wallet';
+import generateWallets from '../utils/createWallet.js';
 
 export const generateCommand = new Command('generate')
-  .description('Generate a new wallet using Spring Boot API')
+  .description('Generate a new wallet locally')
   .action(async () => {
     try {
-      console.log(chalk.yellow('Connecting to API and generating new wallet...'));
-      console.log(chalk.blue(`Using API endpoint: ${API_BASE_URL}`));
+      console.log(chalk.yellow('Generating new wallet locally...'));
       
-      const response = await axios.get<APIWalletResponse>(`${API_BASE_URL}/public/wallet/generate`);
-      const walletData = response.data;
+      const walletData = await generateWallets();
       
       console.log('\n' + chalk.green('Wallet generated successfully!'));
       console.log(chalk.red('\n⚠️  IMPORTANT: Save these details securely! ⚠️'));
       console.log(chalk.red('Never share your private keys or mnemonic phrase with anyone!\n'));
 
       console.log(chalk.yellow('Mnemonic Phrase:'));
-      const words = walletData.ethereum.mnemonic.split(' ');
-      words.forEach((word, index) => {
+      const words = walletData.mnemonic.split(' ');
+      words.forEach((word: string, index: number) => {
         console.log(chalk.white(`${(index + 1).toString().padStart(2, '0')}. ${word}`));
       });
-
-      // Generate DAG wallet
-      const mnemonic = walletData.ethereum.mnemonic;
-      const dagAccount = dag4.createAccount();
-      dagAccount.loginSeedPhrase(mnemonic);
-
-      const dagAddress = dagAccount.address;
-      const dagPublicKey = dagAccount.publicKey;
-      const dagPrivateKey = dagAccount.keyTrio.privateKey;
-
-      // XRP wallet generation part
-      const xrpMainnetWallet = XrpWallet.generate();
-
-      // Ensure we have valid values for mainnet
-      const mainnetAddress = xrpMainnetWallet.classicAddress ?? '';
-      const mainnetPublicKey = xrpMainnetWallet.publicKey ?? '';
-      const mainnetSeed = xrpMainnetWallet.seed ?? '';
-
-      // Use the mainnet seed to generate the testnet wallet
-      const xrpTestnetWallet = XrpWallet.fromSeed(mainnetSeed);
-
-      // Ensure we have valid values for testnet
-      const testnetAddress = xrpTestnetWallet.classicAddress ?? '';
-      const testnetPublicKey = xrpTestnetWallet.publicKey ?? '';
-      const testnetSeed = mainnetSeed; // Use the same seed for both
-
-      console.log('Debug - XRP Mainnet Wallet:', {
-          address: mainnetAddress,
-          publicKey: mainnetPublicKey,
-          seed: mainnetSeed
-      });
-
-      console.log('Debug - XRP Testnet Wallet:', {
-          address: testnetAddress,
-          publicKey: testnetPublicKey,
-          seed: testnetSeed
-      });
-
-      if (!xrpMainnetWallet.classicAddress || !xrpMainnetWallet.publicKey || !xrpMainnetWallet.seed ||
-          !xrpTestnetWallet.classicAddress || !xrpTestnetWallet.publicKey) {
-          throw new Error('Failed to generate XRP wallet credentials');
-      }
-
+      
       const answers = await inquirer.prompt<{ password: string; confirmPassword: string }>([
         {
           type: 'password',
@@ -116,26 +68,26 @@ export const generateCommand = new Command('generate')
           publicKey: walletData.solana.solPublicKey,
         },
         dag: {
-          address: dagAddress,
-          privateKey: dagPrivateKey,
-          publicKey: dagPublicKey,
+          address: walletData.dag.address,
+          privateKey: walletData.dag.privateKey,
+          publicKey: walletData.dag.publicKey,
         },
         xrp: {
           mainnet: {
-            address: mainnetAddress,
-            privateKey: mainnetSeed,
-            publicKey: mainnetPublicKey,
+            address: walletData.xrp.mainnet.address,
+            privateKey: walletData.xrp.mainnet.privateKey,
+            publicKey: walletData.xrp.mainnet.publicKey,
           },
           testnet: {
-            address: testnetAddress,
-            privateKey: testnetSeed,
-            publicKey: testnetPublicKey,
+            address: walletData.xrp.testnet.address,
+            privateKey: walletData.xrp.testnet.privateKey,
+            publicKey: walletData.xrp.testnet.publicKey,
           },
-          address: mainnetAddress,        // Add these top-level properties
-          privateKey: mainnetSeed,
-          publicKey: mainnetPublicKey
+          address: walletData.xrp.mainnet.address,
+          privateKey: walletData.xrp.mainnet.privateKey,
+          publicKey: walletData.xrp.mainnet.publicKey
         },
-        mnemonic: walletData.ethereum.mnemonic,
+        mnemonic: walletData.mnemonic,
         createdAt: new Date().toISOString(),
       };
 
@@ -151,16 +103,16 @@ export const generateCommand = new Command('generate')
         btctestnet: { address: walletDataObj.btctestnet.address, publicKey: walletDataObj.btctestnet.publicKey },
         base: { address: walletDataObj.base.address, publicKey: walletDataObj.base.publicKey },
         sol: { address: walletDataObj.sol.address, publicKey: walletDataObj.sol.publicKey },
-        dag: { address: dagAddress, publicKey: dagPublicKey },
+        dag: { address: walletDataObj.dag.address, publicKey: walletDataObj.dag.publicKey },
         xrp: {
-          address: xrpMainnetWallet.classicAddress,
+          address: walletDataObj.xrp.mainnet.address,
           mainnet: {
-            address: xrpMainnetWallet.classicAddress,
-            publicKey: xrpMainnetWallet.publicKey,
+            address: walletDataObj.xrp.mainnet.address,
+            publicKey: walletDataObj.xrp.mainnet.publicKey,
           },
           testnet: {
-            address: xrpTestnetWallet.classicAddress,
-            publicKey: xrpTestnetWallet.publicKey,
+            address: walletDataObj.xrp.testnet.address,
+            publicKey: walletDataObj.xrp.testnet.publicKey,
           }
         },
         createdAt: walletDataObj.createdAt
@@ -178,6 +130,7 @@ export const generateCommand = new Command('generate')
       console.log(chalk.white(`DAG: ${walletDataObj.dag.address}`));
       console.log(chalk.white(`XRP Mainnet: ${walletDataObj.xrp.mainnet.address}`));
       console.log(chalk.white(`XRP Testnet: ${walletDataObj.xrp.testnet.address}`));
+      
       console.log(chalk.green('\n✔ Wallet encrypted and saved successfully'));
       console.log(chalk.yellow('To decrypt your wallet, use the "decrypt" command with your password'));
     } catch (error) {

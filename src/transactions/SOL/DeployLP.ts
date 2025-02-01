@@ -1,60 +1,132 @@
-// src/transactions/SOL/CreateLiquidityPool.ts
-import { Connection, Keypair, PublicKey, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { Liquidity, MAINNET_PROGRAM_ID } from "@raydium-io/raydium-sdk";
-import BN from "bn.js";
+import { 
+  Connection, 
+  Keypair, 
+  PublicKey, 
+  Transaction,
+  Cluster
+} from "@solana/web3.js";
+import { AnchorProvider } from "@project-serum/anchor";
+import { TokenListProvider, Strategy, TokenInfo } from '@solana/spl-token-registry';
+import VaultImpl, { 
+  VaultImplementation,
+  VaultState,
+  KEEPER_URL
+} from "@mercurial-finance/vault-sdk";
+import { BN } from "bn.js";
 import bs58 from "bs58";
 
-export async function createLiquidityPool(
+async function fetchTokenRegistry(): Promise<TokenInfo[]> {
+  const tokenListProvider = new TokenListProvider();
+  const tokenList = await tokenListProvider.resolve(Strategy.CDN);
+  return tokenList.getList();
+}
+
+export async function createMeteoraLiquidityPool(
   connection: Connection,
   privateKey: string,
   tokenMintA: PublicKey,
   tokenMintB: PublicKey,
-  initialPrice: number,
-  marketAddress: PublicKey,
-  marketProgramId: PublicKey
+  initialLiquidity: number,
+  options?: {
+    cluster?: Cluster;
+    affiliateId?: PublicKey;
+  }
 ): Promise<void> {
+  // Decode and validate private key
   const decodedPrivateKey = bs58.decode(privateKey);
   if (decodedPrivateKey.length !== 64) {
     throw new Error(`Invalid private key length: ${decodedPrivateKey.length}`);
   }
-  const owner = Keypair.fromSecretKey(decodedPrivateKey);
+  
+  // Create wallet from private key
+  const wallet = Keypair.fromSecretKey(decodedPrivateKey);
 
-  const baseAmount = new BN(1000000); // Example base token amount
-  const quoteAmount = new BN(1000000); // Example quote token amount
-  const startTime = new BN(Math.floor(Date.now() / 1000)); // Current timestamp
-
-  const { address, innerTransactions } = await Liquidity.makeCreatePoolV4InstructionV2Simple({
+  // Set up provider
+  const provider = new AnchorProvider(
     connection,
-    programId: MAINNET_PROGRAM_ID.AmmV4,
-    marketInfo: {
-      marketId: marketAddress,
-      programId: marketProgramId,
+    {
+      publicKey: wallet.publicKey,
+      signTransaction: async (tx: Transaction) => {
+        tx.partialSign(wallet);
+        return tx;
+      },
+      signAllTransactions: async (txs: Transaction[]) => {
+        txs.forEach(tx => tx.partialSign(wallet));
+        return txs;
+      }
     },
-    baseMintInfo: {
-      mint: tokenMintA,
-      decimals: 6, // Example decimal value for base token
-    },
-    quoteMintInfo: {
-      mint: tokenMintB,
-      decimals: 6, // Example decimal value for quote token
-    },
-    baseAmount,
-    quoteAmount,
-    startTime,
-    ownerInfo: {
-      feePayer: owner.publicKey,
-      wallet: owner.publicKey,
-      tokenAccounts: [], // Provide the necessary token accounts
-    },
-    associatedOnly: true,
-    checkCreateATAOwner: true,
-    makeTxVersion: 0, // Specify the transaction version (0 for legacy, 1 for v0)
-    feeDestinationId: owner.publicKey, // Specify the fee destination account
-  });
+    { commitment: 'confirmed' }
+  );
 
-  const tx = new Transaction().add(...innerTransactions[0].instructions);
-  const signature = await sendAndConfirmTransaction(connection, tx, [owner]);
+  // Fetch token information from registry
+  const tokenRegistry = await fetchTokenRegistry();
+  const tokenAInfo = tokenRegistry.find((token: TokenInfo) => 
+    token.address === tokenMintA.toString()
+  );
+  const tokenBInfo = tokenRegistry.find((token: TokenInfo) => 
+    token.address === tokenMintB.toString()
+  );
 
-  console.log(`Liquidity pool created: https://solana.fm/tx/${signature}?cluster=devnet-solana`);
+  if (!tokenAInfo || !tokenBInfo) {
+    throw new Error('Token information not found in registry');
+  }
+
+  // Create vault instances for both tokens
+  const vaultA = await VaultImpl.create(
+    connection,
+    new PublicKey(tokenAInfo.address),
+    {
+      cluster: options?.cluster || 'mainnet-beta',
+      affiliateId: options?.affiliateId
+    }
+  );
+
+  const vaultB = await VaultImpl.create(
+    connection,
+    new PublicKey(tokenBInfo.address),
+    {
+      cluster: options?.cluster || 'mainnet-beta',
+      affiliateId: options?.affiliateId
+    }
+  );
+
+  // Calculate deposit amounts based on initial liquidity
+  const depositAmountA = new BN(initialLiquidity * 10 ** tokenAInfo.decimals);
+  const depositAmountB = new BN(initialLiquidity * 10 ** tokenBInfo.decimals);
+
+  // Create deposit transactions
+  const depositTxA = await vaultA.deposit(
+    wallet.publicKey, 
+    depositAmountA
+  );
+  const depositTxB = await vaultB.deposit(
+    wallet.publicKey, 
+    depositAmountB
+  );
+
+  // Send and confirm transactions
+  const depositResultA = await provider.sendAndConfirm(depositTxA);
+  console.log(`Token A deposit confirmed: https://solana.fm/tx/${depositResultA}?cluster=${options?.cluster || 'mainnet-beta'}-solana`);
+
+  const depositResultB = await provider.sendAndConfirm(depositTxB);
+  console.log(`Token B deposit confirmed: https://solana.fm/tx/${depositResultB}?cluster=${options?.cluster || 'mainnet-beta'}-solana`);
+
+  // Get vault details after deposits
+  const vaultDetailsA = await getVaultDetails(vaultA, wallet.publicKey);
+  const vaultDetailsB = await getVaultDetails(vaultB, wallet.publicKey);
+
+  console.log('Pool created successfully');
+  console.log('Vault A Details:', vaultDetailsA);
+  console.log('Vault B Details:', vaultDetailsB);
+}
+
+async function getVaultDetails(vault: VaultImplementation, ownerPublicKey: PublicKey) {
+  const withdrawableAmount = await vault.getWithdrawableAmount(ownerPublicKey);
+  const vaultSupply = await vault.getVaultSupply();
+  
+  return {
+    lpSupply: vaultSupply.toString(),
+    withdrawableAmount: withdrawableAmount.toString(),
+    virtualPrice: withdrawableAmount.toNumber() / vaultSupply.toNumber() || 0
+  };
 }
