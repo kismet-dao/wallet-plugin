@@ -14,16 +14,12 @@ interface Context {
 }
 
 class Logger {
-    private logDir: string;
-    private logFile: string;
     private maxWidth: number;
     private LOG_LEVELS: LogLevels;
     private currentLevel: number;
     private debugMode: boolean;
 
     constructor() {
-        this.logDir = path.join(__dirname, '../../resources/logs');
-        this.logFile = path.join(this.logDir, 'app.log');
         this.maxWidth = 80;
 
         // Log level configuration
@@ -39,16 +35,8 @@ class Logger {
         this.debugMode = false;
 
         // Initialize log directory
-        this.initializeLogDir();
     }
 
-    private async initializeLogDir(): Promise<void> {
-        try {
-            await fs.mkdir(this.logDir, { recursive: true });
-        } catch (error) {
-            console.error('Failed to create log directory:', error);
-        }
-    }
 
     public setLevel(level: string): void {
         const normalizedLevel = level.toLowerCase();
@@ -88,14 +76,6 @@ class Logger {
         return lines;
     }
 
-    private async writeToFile(message: string): Promise<void> {
-        try {
-            await fs.appendFile(this.logFile, message + '\n');
-        } catch (error) {
-            console.error('Failed to write to log file:', error);
-        }
-    }
-
     private formatMessage(level: string, message: string, context: Context = {}): string {
         const timestamp = new Date().toISOString();
         const contextStr = Object.keys(context).length ?
@@ -114,7 +94,6 @@ class Logger {
         if (this.shouldLog('info')) {
             const formatted = this.formatMessage('INFO', message, context);
             console.log(chalk.blue('ℹ'), chalk.blue(formatted));
-            this.writeToFile(formatted);
         }
     }
 
@@ -122,7 +101,6 @@ class Logger {
         if (this.shouldLog('info')) {
             const formatted = this.formatMessage('SUCCESS', message, context);
             console.log(chalk.green('✔'), chalk.green(formatted));
-            this.writeToFile(formatted);
         }
     }
 
@@ -130,7 +108,6 @@ class Logger {
         if (this.shouldLog('info')) {
             const formatted = this.formatMessage('WARN', message, context);
             console.log(chalk.yellow('⚠'), chalk.yellow(formatted));
-            this.writeToFile(formatted);
         }
     }
 
@@ -144,7 +121,6 @@ class Logger {
             }
             const formatted = this.formatMessage('ERROR', message, context);
             console.log(chalk.red('✖'), chalk.red(formatted));
-            this.writeToFile(formatted);
         }
     }
 
@@ -152,7 +128,6 @@ class Logger {
         if (this.shouldLog('debug')) {
             const formatted = this.formatMessage('DEBUG', message, context);
             console.log(chalk.gray('🔍'), chalk.gray(formatted));
-            this.writeToFile(formatted);
         }
     }
 
@@ -160,7 +135,6 @@ class Logger {
         if (this.shouldLog('info')) {
             const formatted = this.formatMessage('TWITTER', message, context);
             console.log(chalk.cyan('🐦'), chalk.cyan(formatted));
-            this.writeToFile(formatted);
         }
     }
 
@@ -168,27 +142,6 @@ class Logger {
         if (this.shouldLog('info')) {
             const formatted = this.formatMessage('TRANSACTION', message, context);
             console.log(chalk.magenta('💰'), chalk.magenta(formatted));
-            this.writeToFile(formatted);
-        }
-    }
-
-    public async clearLogs(): Promise<void> {
-        try {
-            await fs.writeFile(this.logFile, '');
-            this.info('Logs cleared successfully');
-        } catch (error) {
-            this.error('Failed to clear logs', error as Error);
-        }
-    }
-
-    public async getLogs(limit: number = 100): Promise<string[]> {
-        try {
-            const content = await fs.readFile(this.logFile, 'utf8');
-            const lines = content.split('\n').filter(Boolean);
-            return lines.slice(-limit);
-        } catch (error) {
-            this.error('Failed to read logs', error as Error);
-            return [];
         }
     }
 

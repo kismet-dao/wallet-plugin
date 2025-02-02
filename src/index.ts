@@ -1,34 +1,67 @@
-#!/usr/bin/env node
+// src/index.ts
+import { Network } from './networks/Network';
+import { BTCNetwork } from './networks/BTCNetwork';
+import { BTCTestnetNetwork } from './networks/BTCTestnetNetwork';
+import { ETHHoleskyNetwork } from './networks/ETHHoleskyNetwork';
+import { SOLNetwork } from './networks/SOLNetwork';
+import { BASENetwork } from './networks/BASENetwork';
+import { DAGNetwork } from './networks/DAGNetwork';
+import { XRPNetwork } from './networks/XRPNetwork';
+import { NETWORK_DEFAULTS } from './constants/networks';
+import * as transactions from './transactions';
+import * as types from './types';
+import * as utils from './utils';
 
-import { Command } from 'commander';
-import dotenv from 'dotenv';
-import { generateCommand } from './commands/generateCommand';
-import { decryptCommand } from './commands/decryptCommand';
-import { balanceCommand } from './commands/balanceCommand';
-import { gasCommand } from './commands/gasCommand';
-import { sendCommand } from './commands/sendCommand';
-import { buyCommand } from './commands/buyCommand';
-import { addressesCommand } from './commands/addressesCommand';
-import { apiCommand } from './commands/apiCommand';
-import { createTokenCommand } from './commands/createTokenCommand';
-import { faucetCommand } from './commands/faucetCommand';
-import { checkPriceCommand } from './commands/checkPriceCommand';
+// Re-export all types
+export * from './types';
 
-dotenv.config();
+// Re-export all utilities
+export * from './utils';
 
-const program = new Command();
+// Factory function to create network instances
+export function createNetworkInstance(network: string, config = {}): Network {
+    const networkType = network.toLowerCase() as types.NetworkType;
+    
+    switch (networkType) {
+        case 'btc':
+            return new BTCNetwork();
+        case 'btctestnet':
+            return new BTCTestnetNetwork();
+        case 'eth':
+            return new ETHHoleskyNetwork(NETWORK_DEFAULTS.ETH_RPC_URL);
+        case 'sol':
+            return new SOLNetwork(NETWORK_DEFAULTS.SOLANA_RPC_URL);
+        case 'base':
+            return new BASENetwork(NETWORK_DEFAULTS.BASE_RPC_URL);
+        case 'dag':
+            return new DAGNetwork();
+        case 'xrp':
+            return new XRPNetwork(NETWORK_DEFAULTS.XRP_RPC_URL);
+        case 'xrptestnet':
+            return new XRPNetwork(NETWORK_DEFAULTS.XRP_TESTNET_RPC_URL);
+        default:
+            throw new Error(`Unsupported network type: ${network}`);
+    }
+}
 
-program
-  .addCommand(generateCommand)
-  .addCommand(decryptCommand)
-  .addCommand(balanceCommand)
-  .addCommand(gasCommand)
-  .addCommand(sendCommand)
-  .addCommand(buyCommand)
-  .addCommand(addressesCommand)
-  .addCommand(apiCommand)
-  .addCommand(createTokenCommand)
-  .addCommand(faucetCommand)
-  .addCommand(checkPriceCommand);
+// Export network-related classes and types
+export {
+    Network,
+    BTCNetwork,
+    BTCTestnetNetwork,
+    ETHHoleskyNetwork,
+    SOLNetwork,
+    BASENetwork,
+    DAGNetwork,
+    XRPNetwork,
+    NETWORK_DEFAULTS
+};
 
-program.parse(process.argv);
+// Export all transaction-related functionality
+export { transactions };
+
+// Export types namespace
+export { types };
+
+// Export utils namespace
+export { utils };
