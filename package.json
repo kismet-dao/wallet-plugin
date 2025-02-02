@@ -1,6 +1,6 @@
 {
     "name": "@kismet-dao/wallet-plugin",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Cryptocurrency wallet add-on for Kismet Client",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
