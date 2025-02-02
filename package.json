@@ -13,8 +13,8 @@
         "README.md"
     ],
     "scripts": {
-        "build": "tsc",
-        "prepare": "npm run build"
+    "build": "tsc && node scripts/postbuild.js",
+    "prepare": "npm run build"
     },
     "keywords": [
         "kismet",
@@ -53,13 +53,18 @@
         "xrpl": "^4.1.0"
     },
     "devDependencies": {
+        "@babel/cli": "^7.26.4",
+        "@babel/core": "^7.26.7",
+        "@babel/preset-env": "^7.26.7",
         "@types/big.js": "^6.2.2",
         "@types/bn.js": "^5.1.6",
         "@types/crypto-js": "^4.2.1",
         "@types/inquirer": "^9.0.7",
         "@types/node": "^20.10.5",
         "@types/qrcode": "^1.5.5",
+        "babel-plugin-add-import-extension": "^1.6.0",
         "ts-node": "^10.9.2",
+        "tsc-alias": "^1.8.10",
         "typescript": "^5.7.2"
     },
     "repository": {
