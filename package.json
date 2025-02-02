@@ -1,6 +1,6 @@
 {
     "name": "@kismet-dao/wallet-plugin",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Cryptocurrency wallet add-on for Kismet Client",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -13,8 +13,8 @@
         "README.md"
     ],
     "scripts": {
-    "build": "tsc && node scripts/postbuild.js",
-    "prepare": "npm run build"
+        "build": "tsc && node scripts/postbuild.js",
+        "prepare": "npm run build"
     },
     "keywords": [
         "kismet",
