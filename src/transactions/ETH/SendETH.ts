@@ -1,5 +1,5 @@
 import { TransactionDetails, ETHTransactionObject } from '../../types/transaction';
-import { ETHHoleskyNetwork, BASENetwork } from '../../networks';
+import { ETHHoleskyNetwork, BASENetwork } from '../../networks/index';
 import Web3 from 'web3';
 import { getRPCUrl } from '../../utils/rpcUtils';  // Import getRPCUrl
 

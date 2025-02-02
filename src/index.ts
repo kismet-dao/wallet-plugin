@@ -8,15 +8,15 @@ import { BASENetwork } from './networks/BASENetwork';
 import { DAGNetwork } from './networks/DAGNetwork';
 import { XRPNetwork } from './networks/XRPNetwork';
 import { NETWORK_DEFAULTS } from './constants/networks';
-import * as transactions from './transactions';
-import * as types from './types';
-import * as utils from './utils';
+import * as transactions from './transactions/index';
+import * as types from './types/index';
+import * as utils from './utils/index';
 
 // Re-export all types
-export * from './types';
+export * from './types/index';
 
 // Re-export all utilities
-export * from './utils';
+export * from './utils/index';
 
 // Factory function to create network instances
 export function createNetworkInstance(network: string, config = {}): Network {

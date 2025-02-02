@@ -2,7 +2,7 @@ import { GasFees } from '../../utils/gasFees';
 import { CreatePsbt } from './CreatePsbt';
 import { broadcastTransaction } from './BroadcastTransaction';
 import { TransactionDetails, UTXO } from '../../types/bitcoin';
-import { getNetworkInstance } from '../../networks';
+import { getNetworkInstance } from '../../networks/index';
 import { isUTXONetwork } from '../../utils/typeGaurd';
 
 export const sendBTCTransaction = async (
