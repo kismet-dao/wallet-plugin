@@ -2,14 +2,13 @@
 import { Network } from './Network';
 import Web3 from 'web3';
 import { Web3Network } from '../types/network';
-import { NETWORK_DEFAULTS } from '../constants/networks';
 
 export class ETHHoleskyNetwork extends Network implements Web3Network {
+  public readonly isUtxoBased = false as const;
   private web3: Web3;
 
   constructor(rpcUrl: string) {
     super();
-    this.isUtxoBased = false;
     this.web3 = new Web3(rpcUrl);
   }
 
@@ -32,12 +31,11 @@ export class ETHHoleskyNetwork extends Network implements Web3Network {
     return parseFloat(data);
   }
 
-  // Provide an empty implementation for the disconnect method
   async disconnect(): Promise<void> {
-    // No specific disconnection logic required for ETHHoleskyNetwork
+    // No specific disconnection logic required
   }
 
   async initialize(): Promise<void> {
-    // No specific initialization logic required for this network
+    // No specific initialization logic required
   }
 }

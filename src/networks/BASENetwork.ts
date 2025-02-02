@@ -1,20 +1,20 @@
+// src/networks/BASENetwork.ts
 import { Network } from './Network';
 import Web3 from 'web3';
 import { Web3Network } from '../types/network';
 
 export class BASENetwork extends Network implements Web3Network {
+  public readonly isUtxoBased = false as const;
   private web3: Web3;
   private initialized: boolean = false;
 
   constructor(rpcUrl: string) {
     super();
-    this.isUtxoBased = false;
     this.web3 = new Web3(rpcUrl);
   }
 
   async initialize(): Promise<void> {
     try {
-      // Test connection by getting network ID
       await this.web3.eth.net.getId();
       this.initialized = true;
     } catch (error) {

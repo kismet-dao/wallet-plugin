@@ -3,9 +3,8 @@ import { Connection } from "@solana/web3.js";
 import { INetwork, UTXO } from "../types/network";
 import Web3 from "web3";
 
-// src/networks/Network.ts
 export abstract class Network implements INetwork {
-  public isUtxoBased: boolean = false;
+  public abstract readonly isUtxoBased: boolean;
 
   abstract fetchBalance(address: string): Promise<number>;
   abstract calculateBalance(data: any): number;

@@ -4,11 +4,11 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { SolanaNetwork } from '../types/network';
 
 export class SOLNetwork extends Network implements SolanaNetwork {
+  public readonly isUtxoBased = false as const;
   private connection: Connection;
 
   constructor(rpcUrl: string) {
     super();
-    this.isUtxoBased = false;
     this.connection = new Connection(rpcUrl, 'confirmed');
   }
 
@@ -31,12 +31,11 @@ export class SOLNetwork extends Network implements SolanaNetwork {
     return data / LAMPORTS_PER_SOL;
   }
 
-  // Provide an empty implementation for the disconnect method
   async disconnect(): Promise<void> {
-    // No specific disconnection logic required for SOLNetwork
+    // No specific disconnection logic required
   }
   
   async initialize(): Promise<void> {
-    // No specific initialization logic required for this network
+    // No specific initialization logic required
   }
 }
