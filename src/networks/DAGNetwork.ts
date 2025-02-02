@@ -1,7 +1,9 @@
+// src/networks/DAGNetwork.ts
 import { Network } from './Network';
 import { dag4 } from '@stardust-collective/dag4';
 
 export class DAGNetwork extends Network {
+    public readonly isUtxoBased = false as const;
     private networkType: string;
     private l0Url: string;
     private l1Url: string;
@@ -10,8 +12,6 @@ export class DAGNetwork extends Network {
 
     constructor(networkType?: string) {
         super();
-        this.isUtxoBased = false;
-
         // Determine network type from environment or parameter
         this.networkType = (networkType || process.env.NETWORK_TYPE || 'TESTNET').toUpperCase();
         
@@ -26,26 +26,22 @@ export class DAGNetwork extends Network {
         this.l1Url = process.env.METAGRAPH_L1_DATA_URL || 'https://l1-lb-testnet.constellationnetwork.io';
     }
 
-        /**
-     * Initialize DAG network connection
-     * @returns {Promise<void>}
-     */
-        async initialize(): Promise<void> {
+    async initialize(): Promise<void> {
+        try {
+            await dag4.account.connect({
+                networkVersion: this.networkVersion,
+                testnet: this.isTestnet,
+                l0Url: this.l0Url,
+                l1Url: this.l1Url
+            });
+        } catch (error) {
+            throw new Error(`Failed to initialize DAG network: ${error instanceof Error ? error.message : String(error)}`);
         }
+    }
     
-        /**
-         * Disconnect from DAG network
-         * @returns {Promise<void>}
-         */
-        async disconnect(): Promise<void> {
-        }
-
-        
-    /**
-     * Fetch wallet balance
-     * @param {string} address - DAG wallet address
-     * @returns {Promise<number>} Wallet balance
-     */
+    async disconnect(): Promise<void> {
+    }
+    
     async fetchBalance(address: string): Promise<number> {
         try {
             // Connect to network with environment-based configuration
@@ -88,37 +84,24 @@ export class DAGNetwork extends Network {
 
             return Number(balance);
         } catch (error) {
-            // Standardize error logging
             const errorMessage = error instanceof Error 
                 ? error.message 
                 : String(error);
             
-            const errorDetails = {
+            console.error('Error fetching DAG balance', {
                 message: errorMessage,
                 address: address,
                 networkType: this.networkType
-            };
+            });
 
-            console.error('Error fetching DAG balance', errorDetails);
-
-            // Rethrow the original error
             throw error;
         }
     }
 
-    /**
-     * Calculate balance (same as fetch in this case)
-     * @param {number} balance - Raw balance 
-     * @returns {number} Processed balance
-     */
     calculateBalance(balance: number): number {
-        return balance; // DAG doesn't require conversion like Solana
+        return balance;
     }
 
-    /**
-     * Get network connection details
-     * @returns {Object} Network connection information
-     */
     getNetworkDetails() {
         return {
             networkType: this.networkType,

@@ -4,15 +4,15 @@ import { Client, Wallet } from 'xrpl';
 import chalk from 'chalk';
 
 export class XRPNetwork extends Network {
+    public readonly isUtxoBased = false as const;
     private client: Client;
     
     constructor(rpcUrl: string) {
         super();
-        this.isUtxoBased = false;
         this.client = new Client(rpcUrl);
     }
 
-    async initialize() {
+    async initialize(): Promise<void> {
         if (!this.client.isConnected()) {
             try {
                 await this.client.connect();
@@ -29,29 +29,24 @@ export class XRPNetwork extends Network {
             await this.initialize();
 
             try {
-                // Use account_info request with explicit ledger specification
                 const accountInfoResponse = await this.client.request({
                     command: 'account_info',
                     account: address,
-                    ledger_index: 'validated' // Explicitly request validated ledger
+                    ledger_index: 'validated'
                 });
 
-                // Extract and convert balance from drops to XRP
                 const balanceInDrops = accountInfoResponse.result.account_data.Balance;
                 const balanceInXrp = parseFloat(balanceInDrops) / 1_000_000;
 
                 console.log(chalk.green(`Balance for ${address}: ${balanceInXrp} XRP`));
                 return balanceInXrp;
             } catch (accountError: any) {
-                // Detailed error logging
                 console.error(chalk.yellow('Account Retrieval Details:'), 
                     accountError.data ? JSON.stringify(accountError.data, null, 2) : accountError
                 );
 
-                // Specific handling for account not found
                 if (accountError.data?.error === 'actNotFound') {
                     console.warn(chalk.yellow(`Account ${address} does not exist or is not activated.`));
-                    
                     console.log(chalk.blue(`
 XRP Account Activation Notice:
 - This account is not active on the XRP Ledger
@@ -65,7 +60,6 @@ Wallet Address: ${address}
 `));
                 }
 
-                // Rethrow the error
                 throw accountError;
             }
         } catch (error) {
@@ -77,10 +71,10 @@ Wallet Address: ${address}
     }
 
     calculateBalance(data: string): number {
-        return parseFloat(data) / 1_000_000; // Convert drops to XRP
+        return parseFloat(data) / 1_000_000;
     }
 
-    async disconnect() {
+    async disconnect(): Promise<void> {
         if (this.client.isConnected()) {
             await this.client.disconnect();
             console.log(chalk.blue('Disconnected from XRP network'));
@@ -90,16 +84,10 @@ Wallet Address: ${address}
     async fundTestnetWallet(address: string): Promise<number> {
         try {
             await this.initialize();
-    
-            // Use the new fundWallet method from xrpl.js 2.0
-            // Create a new wallet first
             const newWallet = Wallet.generate();
-    
             const fundResult = await this.client.fundWallet(
                 newWallet, 
-                { 
-                    amount: '1' 
-                }
+                { amount: '1' }
             );
     
             console.log(chalk.green(`Funded wallet ${address} with ${fundResult.balance} XRP`));
