@@ -17,27 +17,40 @@ export abstract class BTCNetworkBase extends Network implements IUTXONetwork {
 
   async initialize(): Promise<void> {
     try {
-      // Test connection using genesis block address
-      const genesisAddress = '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa';
+      const testAddresses = this.getNetworkName() === 'BTCTestnet' 
+        ? [
+            'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx',  // Testnet BIP84
+          ]
+        : [
+            'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'   // Mainnet BIP84
+        ];
+      
       const endpoints = this.getEndpoints();
       
-      // Try each endpoint until one works
       for (const endpoint of endpoints) {
-        try {
-          const url = endpoint.replace('{address}', genesisAddress);
-          const response = await axios.get(url);
-          
-          if (response.status === 200) {
-            this.initialized = true;
-            console.log(`${this.getNetworkName()}: Successfully initialized with endpoint ${endpoint}`);
-            return;
+        for (const address of testAddresses) {
+          try {
+            const url = endpoint.replace('{address}', address);
+            const response = await axios.get(url, {
+              timeout: 5000,
+              headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'Wallet/1.0'
+              }
+            });
+            
+            if (response.status === 200) {
+              this.initialized = true;
+              console.log(`${this.getNetworkName()}: Successfully initialized with endpoint ${endpoint}`);
+              return;
+            }
+          } catch (error) {
+            console.warn(
+              `${this.getNetworkName()}: Failed endpoint ${endpoint} with address ${address}:`, 
+              error instanceof Error ? error.message : String(error)
+            );
+            continue;
           }
-        } catch (error) {
-          console.warn(
-            `${this.getNetworkName()}: Failed to initialize with endpoint ${endpoint}:`,
-            error instanceof Error ? error.message : String(error)
-          );
-          continue;
         }
       }
       
@@ -45,12 +58,11 @@ export abstract class BTCNetworkBase extends Network implements IUTXONetwork {
     } catch (error) {
       this.initialized = false;
       throw new Error(
-        `Failed to initialize ${this.getNetworkName()} network: ` +
-        `${error instanceof Error ? error.message : String(error)}`
+        `Failed to initialize ${this.getNetworkName()} network: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
-
+  
   async disconnect(): Promise<void> {
     try {
       // Clear cached UTXOs and reset state
